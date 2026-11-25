@@ -1,0 +1,203 @@
+version: 2
+
+# CTP 3 - Exercise 1: document and govern the staging models.
+# For each model: description, meta (owner, steward, domain, tier); for each column: description,
+# and for personal data: tags: ['pii'] + meta: {classification: confidential|restricted}.
+
+models:
+  - name: stg_customers
+    description: "One row per customer account, cleaned from raw.customers (exact duplicate rows removed, ISO country codes, ISO dates)."
+    meta:
+      owner: "Sara Martin (Head of Sales)"
+      steward: "Karim Benali (Analytics Engineer)"
+      domain: customer
+      tier: gold
+    columns:
+      - name: customer_id
+        description: "Technical identifier of the customer account. One person may have several accounts (see duplicates)."
+        data_tests: [unique, not_null]
+      - name: email
+        description: "Login email, trimmed and lower-cased."
+        tags: ['pii']
+        meta: {classification: confidential}
+      - name: first_name
+        description: "Customer first name, proper-cased (e.g. 'MARIE ' -> 'Marie')."
+        tags: ['pii']
+        meta: {classification: confidential}
+      - name: last_name
+        description: "Customer last name, proper-cased."
+        tags: ['pii']
+        meta: {classification: confidential}
+      - name: phone
+        description: "Phone number as given at signup, not normalized."
+        tags: ['pii']
+        meta: {classification: confidential}
+      - name: birth_date
+        description: "Date of birth, parsed from several raw formats (ISO, DD/MM/YYYY, etc.). NULL if unparseable."
+        tags: ['pii']
+        meta: {classification: restricted}
+      - name: city
+        description: "City of the shipping/billing address, as entered at signup."
+        meta: {classification: internal}
+      - name: country_code
+        description: "ISO 3166-1 alpha-2 country code of residence, normalized from 15+ raw spellings."
+        data_tests:
+          - accepted_values:
+              values: ['FR', 'DE', 'ES', 'BE']
+        meta: {classification: internal}
+      - name: signup_date
+        description: "Date the account was created (DATE, ISO format)."
+        meta: {classification: internal}
+      - name: has_marketing_consent
+        description: "TRUE if the customer consented to marketing emails (GDPR consent flag)."
+        meta: {classification: confidential}
+      - name: loyalty_tier
+        description: "Loyalty program level, lower-cased and normalized ('Platinium' -> 'platinum')."
+        data_tests:
+          - accepted_values:
+              values: ['bronze', 'silver', 'gold', 'platinum']
+        meta: {classification: internal}
+
+  - name: stg_orders
+    description: "One row per order placed on the ShopFast e-commerce site, cleaned: duplicate order_ids removed, status lower-cased ('canceled' -> 'cancelled'), dates as DATE, amounts in EUROS."
+    meta:
+      owner: "Sara Martin (Head of Sales)"
+      steward: "Karim Benali (Analytics Engineer)"
+      domain: sales
+      tier: gold
+    columns:
+      - name: order_id
+        description: "Unique identifier of the order (e.g. 700001)."
+        data_tests: [unique, not_null]
+        meta: {classification: internal}
+      - name: customer_id
+        description: "Identifier of the customer who placed the order (see stg_customers). Known quality issue: a few orders reference a customer_id absent from stg_customers."
+        data_tests: [not_null]
+        meta: {classification: internal}
+      - name: order_date
+        description: "Date the order was placed (DATE). Known quality issue: 11 NULL dates and a few dates in the future."
+        meta: {classification: internal}
+      - name: status
+        description: "Lifecycle of the order, normalized to lower-case: pending, shipped, delivered, returned or cancelled."
+        data_tests:
+          - accepted_values:
+              values: ['pending', 'shipped', 'delivered', 'returned', 'cancelled']
+        meta: {classification: internal}
+      - name: channel
+        description: "Sales channel where the order was placed: web, mobile_app or marketplace."
+        data_tests:
+          - accepted_values:
+              values: ['web', 'mobile_app', 'marketplace']
+        meta: {classification: internal}
+      - name: shipping_country
+        description: "ISO country code the order was shipped to: FR, DE, ES or BE."
+        data_tests:
+          - accepted_values:
+              values: ['FR', 'DE', 'ES', 'BE']
+        meta: {classification: internal}
+      - name: total_amount_eur
+        description: "Total amount paid for the order in EUROS with 2 decimals (VAT included, shipping included), before refunds. Unit = EUROS, NOT cents (see the cents incident)."
+        meta: {classification: internal}
+
+  - name: stg_order_items
+    description: "One row per product line of an order."
+    meta:
+      owner: "Sara Martin (Head of Sales)"
+      steward: "Karim Benali (Analytics Engineer)"
+      domain: sales
+      tier: silver
+    columns:
+      - name: order_item_id
+        description: "Unique identifier of the order line."
+        data_tests: [unique, not_null]
+        meta: {classification: internal}
+      - name: order_id
+        description: "Identifier of the order this line belongs to (see stg_orders)."
+        data_tests: [not_null]
+        meta: {classification: internal}
+      - name: product_id
+        description: "Identifier of the product ordered (see stg_products)."
+        data_tests: [not_null]
+        meta: {classification: internal}
+      - name: quantity
+        description: "Number of units of the product in this line (positive integer)."
+        meta: {classification: internal}
+      - name: unit_price_eur
+        description: "Unit selling price in EUROS with 2 decimals, VAT included, at the time of the order."
+        meta: {classification: internal}
+
+  - name: stg_payments
+    description: "One row per payment event from the payment provider (captured or refunded)."
+    meta:
+      owner: "Paul Girard (Head of Finance)"
+      steward: "Karim Benali (Analytics Engineer)"
+      domain: finance
+      tier: gold
+    columns:
+      - name: payment_id
+        description: "Unique identifier of the payment event (e.g. 900001)."
+        data_tests: [unique, not_null]
+        meta: {classification: internal}
+      - name: order_id
+        description: "Identifier of the order this payment settles or refunds (see stg_orders)."
+        data_tests: [not_null]
+        meta: {classification: internal}
+      - name: payment_date
+        description: "Date the payment was captured or refunded (DATE)."
+        meta: {classification: internal}
+      - name: method
+        description: "Payment method used by the customer: card, paypal, apple_pay or bank_transfer."
+        data_tests:
+          - accepted_values:
+              values: ['card', 'paypal', 'apple_pay', 'bank_transfer']
+        meta: {classification: internal}
+      - name: amount
+        description: "Amount of the payment event in EUROS with 2 decimals (13.70 - 1400.79 in current data). Unit = EUROS, NOT cents - the payment provider once switched to cents and broke net revenue (the cents incident)."
+        meta: {classification: internal}
+      - name: currency
+        description: "ISO 4217 currency code of the payment. Only 'EUR' in current data."
+        data_tests:
+          - accepted_values:
+              values: ['EUR']
+        meta: {classification: internal}
+      - name: card_last4
+        description: "Last 4 digits of the card used, NULL for non-card payments. Never store the full card number."
+        tags: ['pii']
+        meta: {classification: restricted}
+      - name: payment_status
+        description: "Direction of the payment event: 'captured' (money in) or 'refunded' (money back to the customer)."
+        data_tests:
+          - accepted_values:
+              values: ['captured', 'refunded']
+        meta: {classification: internal}
+
+  - name: stg_products
+    description: "Product catalogue with list prices."
+    meta:
+      owner: "Lea Fontaine (Head of Product)"
+      steward: "Karim Benali (Analytics Engineer)"
+      domain: product
+      tier: silver
+    columns:
+      - name: product_id
+        description: "Unique identifier of the product."
+        data_tests: [unique, not_null]
+        meta: {classification: internal}
+      - name: sku
+        description: "Stock keeping unit (warehouse reference) of the product."
+        meta: {classification: internal}
+      - name: product_name
+        description: "Commercial name of the product as shown on the site."
+        meta: {classification: internal}
+      - name: category
+        description: "Merchandising category, proper-cased (e.g. 'home & living')."
+        meta: {classification: internal}
+      - name: list_price_eur
+        description: "Current list price in EUROS with 2 decimals, VAT included. NULL if missing from the catalogue."
+        meta: {classification: internal}
+      - name: supplier
+        description: "Name of the supplier delivering the product."
+        meta: {classification: internal}
+      - name: is_active
+        description: "TRUE if the product is currently sellable ('Y' in the raw feed)."
+        meta: {classification: internal}

@@ -1,0 +1,7 @@
+# Impact note — payments provider switches `amount` from EUROS to CENTS
+
+1. **What breaks:** `stg_payments.amount` becomes ×100, so `fct_orders` (refunded_eur, net_revenue_eur = (total − refunds)/1.20 on cent values → net revenue ÷100), and downstream `dim_customers.lifetime_net_revenue_eur`; impacted exposures: the **Sales dashboard** (CEO, daily), the **Finance monthly revenue report** (board, monthly) and the **churn-prediction model** (lifetime revenue feature).
+2. **Owners to warn before the change:** Paul Girard (Head of Finance, owner of stg_payments), Sara Martin (Head of Sales, owner of the Sales dashboard and churn model), Karim Benali (steward, must fix the conversion in stg_payments).
+3. **Test to add:** an amount-range contract test on stg_payments — `not_null` + accepted range 0 < amount ≤ 2 000 EUR + a mean-between-100-and-400 check — plus `unique/not_null` on payment_id (it would have caught the cents incident).
+4. **Fix if it happens anyway:** divide `amount` by 100 in stg_payments (one line), rebuild stg_payments → fct_orders → dim_customers in dependency order, then re-run the range test and reconcile one known order end-to-end (e.g. €217.38 for order 700002).
+5. **Who approves:** Paul Girard (data owner, finance domain) validates the definition and the backfill; Karim Benali (steward) reviews the PR in Git; no deployment until the range tests pass on the new feed.

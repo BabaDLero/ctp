@@ -1,0 +1,71 @@
+model,column,description,pii,classification,model_owner,domain,tier
+dim_customers,customer_id,Technical identifier of the customer account (see stg_customers).,False,internal,Sara Martin (Head of Sales),customer,gold
+dim_customers,first_name,"Customer first name, proper-cased.",True,confidential,Sara Martin (Head of Sales),customer,gold
+dim_customers,last_name,"Customer last name, proper-cased.",True,confidential,Sara Martin (Head of Sales),customer,gold
+dim_customers,email,"Login email, trimmed and lower-cased.",True,confidential,Sara Martin (Head of Sales),customer,gold
+dim_customers,country_code,"ISO 3166-1 alpha-2 country code of residence: FR, DE, ES or BE.",False,internal,Sara Martin (Head of Sales),customer,gold
+dim_customers,loyalty_tier,"Loyalty program level: bronze, silver, gold or platinum.",False,internal,Sara Martin (Head of Sales),customer,gold
+dim_customers,signup_date,Date the account was created (DATE).,False,internal,Sara Martin (Head of Sales),customer,gold
+dim_customers,has_marketing_consent,TRUE if the customer consented to marketing emails (GDPR consent flag). The churn model must not target customers without consent.,False,confidential,Sara Martin (Head of Sales),customer,gold
+dim_customers,lifetime_orders,"Count of orders placed by this customer, whatever their status. An order is: **Order** — a purchase transaction placed by a customer on the ShopFast site in one go (one row in fct_orders), whatever its current status.
+Formula: identified by a unique `order_id`; statuses: pending → shipped → delivered, or returned / cancelled. Cancelled orders generate no revenue; returned orders are removed from net revenue through refunds.
+Example: order 700002, placed 2026-10-08 on mobile_app for €217.38, delivered.
+Owner: Sara Martin (Head of Sales) · Steward: Karim Benali · Status: approved (2026-11-25).",False,internal,Sara Martin (Head of Sales),customer,gold
+dim_customers,last_order_date,"Date of the customer's most recent order. Used to decide if the customer is active: **Active customer** — a customer account with at least one **non-cancelled** order in the **last 12 months**, counted as of the analysis date.
+Formula: `max(order_date) >= current_date - 365` over orders whose status is not 'cancelled' (status pending/shipped/delivered/returned counts; cancelled does not).
+Example: on 2026-11-25, a customer whose last order was 2026-01-10 (not cancelled) is active; a customer whose last order was 2025-10-01 is not.
+Owner: Paul Girard (Head of Finance) — 12 months matches the investor year-over-year comparisons · Steward: Karim Benali · Status: approved (2026-11-25).
+Note: Sales targets ""recently active customers"" with a 6-month window — that is a separate term (see recently_active_customer), not a redefinition of this one.",False,internal,Sara Martin (Head of Sales),customer,gold
+dim_customers,lifetime_net_revenue_eur,"Sum of the customer's net revenue over all their orders, in EUROS with 2 decimals. See the net_revenue glossary term: revenue excluding VAT, after refunds.",False,internal,Sara Martin (Head of Sales),customer,gold
+fct_orders,order_id,Unique identifier of the order (see stg_orders).,False,internal,Sara Martin (Head of Sales),sales,gold
+fct_orders,customer_id,Identifier of the customer who placed the order (see stg_customers).,False,internal,Sara Martin (Head of Sales),sales,gold
+fct_orders,order_date,Date the order was placed (DATE).,False,internal,Sara Martin (Head of Sales),sales,gold
+fct_orders,status,"Lifecycle of the order: pending, shipped, delivered, returned or cancelled.",False,internal,Sara Martin (Head of Sales),sales,gold
+fct_orders,channel,"Sales channel of the order: web, mobile_app or marketplace.",False,internal,Sara Martin (Head of Sales),sales,gold
+fct_orders,shipping_country,"ISO country code the order was shipped to: FR, DE, ES or BE.",False,internal,Sara Martin (Head of Sales),sales,gold
+fct_orders,gross_revenue_eur,"**Gross revenue (EUR)** — total amount paid by the customer for an order, VAT included, shipping included, before refunds.
+Owner: Head of Sales · Steward: Karim Benali · Status: approved (2026-11-10)",False,internal,Sara Martin (Head of Sales),sales,gold
+fct_orders,refunded_eur,Total amount refunded for this order in EUROS with 2 decimals (sum of refunded payment events; 0 if never refunded).,False,internal,Sara Martin (Head of Sales),sales,gold
+fct_orders,net_revenue_eur,"**Net revenue (EUR)** — what ShopFast really keeps: gross revenue of the order minus refunds, **excluding VAT** (VAT is not our money), shipping fees included.
+Formula: `net_revenue_eur = round((total_amount_eur − refunds) / 1.20, 2)` (French VAT rate of 20%).
+Example: an order of €120 paid, fully refunded, gives net revenue €0; an order of €120 with no refund gives €100.
+Owner: Paul Girard (Head of Finance) — decided for the board and the annual accounts · Steward: Karim Benali · Status: approved (2026-11-25).
+Note: the Sales team needs VAT-included amounts for commissions — they must use gross_revenue, or ask for a **new term** (""net revenue incl. VAT""), never redefine this one.",False,internal,Sara Martin (Head of Sales),sales,gold
+stg_customers,customer_id,Technical identifier of the customer account. One person may have several accounts (see duplicates).,False,,Sara Martin (Head of Sales),customer,gold
+stg_customers,email,"Login email, trimmed and lower-cased.",True,confidential,Sara Martin (Head of Sales),customer,gold
+stg_customers,first_name,"Customer first name, proper-cased (e.g. 'MARIE ' -> 'Marie').",True,confidential,Sara Martin (Head of Sales),customer,gold
+stg_customers,last_name,"Customer last name, proper-cased.",True,confidential,Sara Martin (Head of Sales),customer,gold
+stg_customers,phone,"Phone number as given at signup, not normalized.",True,confidential,Sara Martin (Head of Sales),customer,gold
+stg_customers,birth_date,"Date of birth, parsed from several raw formats (ISO, DD/MM/YYYY, etc.). NULL if unparseable.",True,restricted,Sara Martin (Head of Sales),customer,gold
+stg_customers,city,"City of the shipping/billing address, as entered at signup.",False,internal,Sara Martin (Head of Sales),customer,gold
+stg_customers,country_code,"ISO 3166-1 alpha-2 country code of residence, normalized from 15+ raw spellings.",False,internal,Sara Martin (Head of Sales),customer,gold
+stg_customers,signup_date,"Date the account was created (DATE, ISO format).",False,internal,Sara Martin (Head of Sales),customer,gold
+stg_customers,has_marketing_consent,TRUE if the customer consented to marketing emails (GDPR consent flag).,False,confidential,Sara Martin (Head of Sales),customer,gold
+stg_customers,loyalty_tier,"Loyalty program level, lower-cased and normalized ('Platinium' -> 'platinum').",False,internal,Sara Martin (Head of Sales),customer,gold
+stg_orders,order_id,Unique identifier of the order (e.g. 700001).,False,internal,Sara Martin (Head of Sales),sales,gold
+stg_orders,customer_id,Identifier of the customer who placed the order (see stg_customers). Known quality issue: a few orders reference a customer_id absent from stg_customers.,False,internal,Sara Martin (Head of Sales),sales,gold
+stg_orders,order_date,Date the order was placed (DATE). Known quality issue: 11 NULL dates and a few dates in the future.,False,internal,Sara Martin (Head of Sales),sales,gold
+stg_orders,status,"Lifecycle of the order, normalized to lower-case: pending, shipped, delivered, returned or cancelled.",False,internal,Sara Martin (Head of Sales),sales,gold
+stg_orders,channel,"Sales channel where the order was placed: web, mobile_app or marketplace.",False,internal,Sara Martin (Head of Sales),sales,gold
+stg_orders,shipping_country,"ISO country code the order was shipped to: FR, DE, ES or BE.",False,internal,Sara Martin (Head of Sales),sales,gold
+stg_orders,total_amount_eur,"Total amount paid for the order in EUROS with 2 decimals (VAT included, shipping included), before refunds. Unit = EUROS, NOT cents (see the cents incident).",False,internal,Sara Martin (Head of Sales),sales,gold
+stg_order_items,order_item_id,Unique identifier of the order line.,False,internal,Sara Martin (Head of Sales),sales,silver
+stg_order_items,order_id,Identifier of the order this line belongs to (see stg_orders).,False,internal,Sara Martin (Head of Sales),sales,silver
+stg_order_items,product_id,Identifier of the product ordered (see stg_products).,False,internal,Sara Martin (Head of Sales),sales,silver
+stg_order_items,quantity,Number of units of the product in this line (positive integer).,False,internal,Sara Martin (Head of Sales),sales,silver
+stg_order_items,unit_price_eur,"Unit selling price in EUROS with 2 decimals, VAT included, at the time of the order.",False,internal,Sara Martin (Head of Sales),sales,silver
+stg_payments,payment_id,Unique identifier of the payment event (e.g. 900001).,False,internal,Paul Girard (Head of Finance),finance,gold
+stg_payments,order_id,Identifier of the order this payment settles or refunds (see stg_orders).,False,internal,Paul Girard (Head of Finance),finance,gold
+stg_payments,payment_date,Date the payment was captured or refunded (DATE).,False,internal,Paul Girard (Head of Finance),finance,gold
+stg_payments,method,"Payment method used by the customer: card, paypal, apple_pay or bank_transfer.",False,internal,Paul Girard (Head of Finance),finance,gold
+stg_payments,amount,"Amount of the payment event in EUROS with 2 decimals (13.70 - 1400.79 in current data). Unit = EUROS, NOT cents - the payment provider once switched to cents and broke net revenue (the cents incident).",False,internal,Paul Girard (Head of Finance),finance,gold
+stg_payments,currency,ISO 4217 currency code of the payment. Only 'EUR' in current data.,False,internal,Paul Girard (Head of Finance),finance,gold
+stg_payments,card_last4,"Last 4 digits of the card used, NULL for non-card payments. Never store the full card number.",True,restricted,Paul Girard (Head of Finance),finance,gold
+stg_payments,payment_status,Direction of the payment event: 'captured' (money in) or 'refunded' (money back to the customer).,False,internal,Paul Girard (Head of Finance),finance,gold
+stg_products,product_id,Unique identifier of the product.,False,internal,Lea Fontaine (Head of Product),product,silver
+stg_products,sku,Stock keeping unit (warehouse reference) of the product.,False,internal,Lea Fontaine (Head of Product),product,silver
+stg_products,product_name,Commercial name of the product as shown on the site.,False,internal,Lea Fontaine (Head of Product),product,silver
+stg_products,category,"Merchandising category, proper-cased (e.g. 'home & living').",False,internal,Lea Fontaine (Head of Product),product,silver
+stg_products,list_price_eur,"Current list price in EUROS with 2 decimals, VAT included. NULL if missing from the catalogue.",False,internal,Lea Fontaine (Head of Product),product,silver
+stg_products,supplier,Name of the supplier delivering the product.,False,internal,Lea Fontaine (Head of Product),product,silver
+stg_products,is_active,TRUE if the product is currently sellable ('Y' in the raw feed).,False,internal,Lea Fontaine (Head of Product),product,silver

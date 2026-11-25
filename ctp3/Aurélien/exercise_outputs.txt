@@ -1,0 +1,21 @@
+﻿=== dbt build (summary) ===
+dbt build: 7 models (5 staging views + 2 marts tables), 32 data tests -> PASS=39 WARN=0 ERROR=0 SKIP=0 NO-OP=3 (3 exposures) TOTAL=42
+09:38:31  Finished running 3 exposures, 2 table models, 32 data tests, 5 view models in 0 hours 0 minutes and 1.07 seconds (1.07s).
+09:38:31  
+09:38:31  Completed successfully
+09:38:31  
+09:38:31  Done. PASS=39 WARN=0 ERROR=0 SKIP=0 NO-OP=3 REUSED=0 TOTAL=42
+
+=== Exercise 1 - python check_governance.py ===
+Models: 7 | documented columns: 58/58
+GOVERNANCE CHECK: PASSED
+exit code: 0
+
+=== Exercise 2 - dbt ls --select source:shopfast_raw.payments+ (models) ===
+shopfast.marts.dim_customers
+shopfast.marts.fct_orders
+shopfast.staging.stg_payments
+=== Exercise 2 - dbt ls --select source:shopfast_raw.payments+ (exposures downstream) ===
+exposure:shopfast.churn_prediction_model
+exposure:shopfast.finance_monthly_revenue_report
+exposure:shopfast.sales_dashboard

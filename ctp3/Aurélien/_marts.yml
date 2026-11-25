@@ -1,0 +1,101 @@
+version: 2
+
+models:
+  - name: fct_orders
+    description: "One row per order with gross, refunded and net revenue. Source of the Sales dashboard and the Finance report."
+    meta:
+      owner: "Sara Martin (Head of Sales)"
+      steward: "Karim Benali (Analytics Engineer)"
+      domain: sales
+      tier: gold
+    columns:
+      - name: order_id
+        description: "Unique identifier of the order (see stg_orders)."
+        data_tests: [unique, not_null]
+        meta: {classification: internal}
+      - name: customer_id
+        description: "Identifier of the customer who placed the order (see stg_customers)."
+        data_tests: [not_null]
+        meta: {classification: internal}
+      - name: order_date
+        description: "Date the order was placed (DATE)."
+        meta: {classification: internal}
+      - name: status
+        description: "Lifecycle of the order: pending, shipped, delivered, returned or cancelled."
+        data_tests:
+          - accepted_values:
+              values: ['pending', 'shipped', 'delivered', 'returned', 'cancelled']
+        meta: {classification: internal}
+      - name: channel
+        description: "Sales channel of the order: web, mobile_app or marketplace."
+        data_tests:
+          - accepted_values:
+              values: ['web', 'mobile_app', 'marketplace']
+        meta: {classification: internal}
+      - name: shipping_country
+        description: "ISO country code the order was shipped to: FR, DE, ES or BE."
+        data_tests:
+          - accepted_values:
+              values: ['FR', 'DE', 'ES', 'BE']
+        meta: {classification: internal}
+      - name: gross_revenue_eur
+        description: "{{ doc('gross_revenue') }}"
+        meta: {classification: internal}
+      - name: refunded_eur
+        description: "Total amount refunded for this order in EUROS with 2 decimals (sum of refunded payment events; 0 if never refunded)."
+        meta: {classification: internal}
+      - name: net_revenue_eur
+        description: "{{ doc('net_revenue') }}"
+        meta: {classification: internal}
+
+  - name: dim_customers
+    description: "One row per customer account with lifetime metrics (number of orders, last order date, lifetime net revenue). Used by the Sales dashboard and the churn-prediction model."
+    meta:
+      owner: "Sara Martin (Head of Sales)"
+      steward: "Karim Benali (Analytics Engineer)"
+      domain: customer
+      tier: gold
+    columns:
+      - name: customer_id
+        description: "Technical identifier of the customer account (see stg_customers)."
+        data_tests: [unique, not_null]
+        meta: {classification: internal}
+      - name: first_name
+        description: "Customer first name, proper-cased."
+        tags: ['pii']
+        meta: {classification: confidential}
+      - name: last_name
+        description: "Customer last name, proper-cased."
+        tags: ['pii']
+        meta: {classification: confidential}
+      - name: email
+        description: "Login email, trimmed and lower-cased."
+        tags: ['pii']
+        meta: {classification: confidential}
+      - name: country_code
+        description: "ISO 3166-1 alpha-2 country code of residence: FR, DE, ES or BE."
+        data_tests:
+          - accepted_values:
+              values: ['FR', 'DE', 'ES', 'BE']
+        meta: {classification: internal}
+      - name: loyalty_tier
+        description: "Loyalty program level: bronze, silver, gold or platinum."
+        data_tests:
+          - accepted_values:
+              values: ['bronze', 'silver', 'gold', 'platinum']
+        meta: {classification: internal}
+      - name: signup_date
+        description: "Date the account was created (DATE)."
+        meta: {classification: internal}
+      - name: has_marketing_consent
+        description: "TRUE if the customer consented to marketing emails (GDPR consent flag). The churn model must not target customers without consent."
+        meta: {classification: confidential}
+      - name: lifetime_orders
+        description: "Count of orders placed by this customer, whatever their status. An order is: {{ doc('order') }}"
+        meta: {classification: internal}
+      - name: last_order_date
+        description: "Date of the customer's most recent order. Used to decide if the customer is active: {{ doc('active_customer') }}"
+        meta: {classification: internal}
+      - name: lifetime_net_revenue_eur
+        description: "Sum of the customer's net revenue over all their orders, in EUROS with 2 decimals. See the net_revenue glossary term: revenue excluding VAT, after refunds."
+        meta: {classification: internal}
