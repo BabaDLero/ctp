@@ -1,6 +1,6 @@
 # CTP 2 — Submission (Aurel)
 
-Data Quality: Measure, Clean, Test — 25 Nov (AM). Deliverables for the repo path `ctp/ctp2/aurel/`.
+Data Quality: Measure, Clean, Test — 25 Nov (AM). Deliverables for the repo path `ctp/ctp2/`.
 
 ## What is in this folder
 
