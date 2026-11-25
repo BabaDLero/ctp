@@ -1,0 +1,170 @@
+[
+  {
+    "op": "core/sort",
+    "description": "Sort rows by customer_id (prepare for Blank down)",
+    "config": {
+      "mode": "row-based",
+      "criteria": [
+        {
+          "column": "customer_id",
+          "valueType": "number",
+          "caseSensitive": false,
+          "reverse": false,
+          "blankPosition": 2,
+          "errorPosition": 1
+        }
+      ]
+    },
+    "engineConfig": { "facets": [], "mode": "row-based" }
+  },
+  {
+    "op": "core/blank-down",
+    "description": "Blank down customer_id: mark repeated customer_id rows (reorder permanently)",
+    "engineConfig": { "facets": [], "mode": "row-based" },
+    "columns": ["customer_id"]
+  },
+  {
+    "op": "core/row-removal",
+    "description": "Remove the duplicate rows: customer_id blanked by previous step (also covers exact duplicate rows)",
+    "engineConfig": {
+      "facets": [
+        {
+          "type": "list",
+          "name": "duplicates",
+          "columnName": "customer_id",
+          "mode": "expression",
+          "expression": "isBlank(value)",
+          "invert": false,
+          "omitBlank": false,
+          "omitError": false,
+          "selectBlank": true,
+          "selectNonblank": false,
+          "selectError": false,
+          "expressionParams": [],
+          "selection": []
+        }
+      ],
+      "mode": "row-based"
+    }
+  },
+  {
+    "op": "core/text-transform",
+    "description": "first_name: trim + collapse spaces + To titlecase",
+    "engineConfig": { "facets": [], "mode": "row-based" },
+    "columnName": "first_name",
+    "expression": "value.trim().replace(/\\s+/, ' ').toTitlecase()",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10
+  },
+  {
+    "op": "core/text-transform",
+    "description": "last_name: trim + collapse spaces + To titlecase",
+    "engineConfig": { "facets": [], "mode": "row-based" },
+    "columnName": "last_name",
+    "expression": "value.trim().replace(/\\s+/, ' ').toTitlecase()",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10
+  },
+  {
+    "op": "core/text-transform",
+    "description": "email: value.trim().toLowercase()",
+    "engineConfig": { "facets": [], "mode": "row-based" },
+    "columnName": "email",
+    "expression": "value.trim().toLowercase()",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10
+  },
+  {
+    "op": "core/text-transform",
+    "description": "country: cluster the 15+ spellings into the 4 ISO-2 codes FR / DE / ES / BE",
+    "engineConfig": { "facets": [], "mode": "row-based" },
+    "columnName": "country",
+    "expression": "value.trim().toLowercase().replace(/^(france|fra)$/, 'FR').replace(/^(germany|deu|allemagne)$/, 'DE').replace(/^(spain|espagne)$/, 'ES').replace(/^(belgium|bel|belgique)$/, 'BE').toUpperCase()",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10
+  },
+  {
+    "op": "core/text-transform",
+    "description": "signup_date: to ISO YYYY-MM-DD (25/03/2024 -> 2024-03-25 ; 03-25-2024 -> 2024-03-25 ; 2024/03/25 -> 2024-03-25)",
+    "engineConfig": { "facets": [], "mode": "row-based" },
+    "columnName": "signup_date",
+    "expression": "if(isNotNull(value.match(/\\d{2}\\/\\d{2}\\/\\d{4}/)), with(value.split('/'), p, p[2]+'-'+p[1]+'-'+p[0]), if(isNotNull(value.match(/\\d{2}-\\d{2}-\\d{4}/)), with(value.split('-'), p, p[2]+'-'+p[0]+'-'+p[1]), if(isNotNull(value.match(/\\d{4}\\/\\d{2}\\/\\d{2}/)), value.replace('/', '-'), value)))",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10
+  },
+  {
+    "op": "core/text-transform",
+    "description": "birth_date: same ISO YYYY-MM-DD recipe as signup_date",
+    "engineConfig": { "facets": [], "mode": "row-based" },
+    "columnName": "birth_date",
+    "expression": "if(isNotNull(value.match(/\\d{2}\\/\\d{2}\\/\\d{4}/)), with(value.split('/'), p, p[2]+'-'+p[1]+'-'+p[0]), if(isNotNull(value.match(/\\d{2}-\\d{2}-\\d{4}/)), with(value.split('-'), p, p[2]+'-'+p[0]+'-'+p[1]), if(isNotNull(value.match(/\\d{4}\\/\\d{2}\\/\\d{2}/)), value.replace('/', '-'), value)))",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10
+  },
+  {
+    "op": "core/text-transform",
+    "description": "loyalty_tier: trim + lower case + fix the 'platinium' spelling",
+    "engineConfig": { "facets": [], "mode": "row-based" },
+    "columnName": "loyalty_tier",
+    "expression": "value.trim().toLowercase().replace('platinium', 'platinum')",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10
+  },
+  {
+    "op": "core/text-transform",
+    "description": "postal_code: French postal codes that lost their leading zero (4 digits -> 5 digits)",
+    "engineConfig": { "facets": [], "mode": "row-based" },
+    "columnName": "postal_code",
+    "expression": "if(and(cells['country'].value == 'FR', value.length() == 4), '0' + value, value)",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10
+  },
+  {
+    "op": "core/text-transform",
+    "description": "phone: normalise to the +33612345678 format",
+    "engineConfig": { "facets": [], "mode": "row-based" },
+    "columnName": "phone",
+    "expression": "with(value.replace(/[^0-9+]/, ''), v, if(v.startsWith('0033'), '+33' + v.substring(4), if(and(v.startsWith('0'), v.length() == 10), '+33' + v.substring(1), v)))",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10
+  },
+  {
+    "op": "core/column-addition",
+    "description": "is_duplicate_email: flag duplicate emails (flag, do not delete)",
+    "engineConfig": {
+      "facets": [
+        {
+          "type": "list",
+          "name": "email facet",
+          "columnName": "email",
+          "mode": "expression",
+          "expression": "value.trim().toLowercase()",
+          "invert": false,
+          "omitBlank": false,
+          "omitError": false,
+          "selectBlank": false,
+          "selectNonblank": false,
+          "selectError": false,
+          "expressionParams": [],
+          "selection": []
+        }
+      ],
+      "mode": "row-based"
+    },
+    "columnName": "email",
+    "columnInsertIndex": 4,
+    "newColumnName": "is_duplicate_email",
+    "expression": "facetCount(value.trim().toLowercase(), 'value.trim().toLowercase()', 'email facet') > 1",
+    "onError": "set-to-blank",
+    "keepOriginalColumns": true
+  }
+]
